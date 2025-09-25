@@ -2,6 +2,7 @@
 use strict;
 use warnings;
 use IO::Socket::INET;
+use IO::Select;
 
 # Read host and port from command-line
 my ($server_host, $server_port) = @ARGV;
@@ -10,10 +11,10 @@ unless ($server_host && $server_port =~ /^\d+$/) {
     die "Usage: $0 <host> <port>\nExample: $0 127.0.0.1 5000\n";
 }
 
-my $retry_delay = 3;  # Seconds between retries
+my $retry_delay = 3;       # Seconds between retries
+my $read_timeout = 10;     # Seconds to wait for server data
 my $log_file = "tcp_client_log.txt";
 
-# Open log file for appending
 open my $logfh, '>>', $log_file or die "Cannot open log file: $!\n";
 $logfh->autoflush(1);
 
@@ -45,13 +46,27 @@ while (1) {
     print "Connected to server.\n";
     print $logfh "Connected to $server_host:$server_port\n";
 
-    while (my $line = <$socket>) {
-        chomp $line;
-        print "Received: $line\n";
-        print $logfh "$line\n";
+    my $selector = IO::Select->new($socket);
+
+    while (1) {
+        if ($selector->can_read($read_timeout)) {
+            my $line = <$socket>;
+            unless (defined $line) {
+                print "Server closed connection.\n";
+                print $logfh "Server closed connection.\n";
+                last;
+            }
+            chomp $line;
+            print "Received: $line\n";
+            print $logfh "$line\n";
+        } else {
+            print "Read timeout: no data from server in $read_timeout seconds.\n";
+            print $logfh "Read timeout: no data from server.\n";
+            last;
+        }
     }
 
-    print "Disconnected from server. Reconnecting in $retry_delay seconds...\n";
+    print "Disconnected. Reconnecting in $retry_delay seconds...\n";
     print $logfh "Disconnected from server.\n";
     close $socket;
     sleep($retry_delay);
