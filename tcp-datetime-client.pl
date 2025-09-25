@@ -2,13 +2,10 @@
 use strict;
 use warnings;
 use IO::Socket::INET;
-use POSIX qw(strftime);
-use Time::HiRes qw(sleep);
 
 # Read host and port from command-line
 my ($server_host, $server_port) = @ARGV;
 
-# Validate input
 unless ($server_host && $server_port =~ /^\d+$/) {
     die "Usage: $0 <host> <port>\nExample: $0 127.0.0.1 5000\n";
 }
