@@ -11,6 +11,11 @@ unless ($server_host && $server_port =~ /^\d+$/) {
 }
 
 my $retry_delay = 3;  # Seconds between retries
+my $log_file = "tcp_client_log.txt";
+
+# Open log file for appending
+open my $logfh, '>>', $log_file or die "Cannot open log file: $!\n";
+$logfh->autoflush(1);
 
 while (1) {
     print "Attempting to connect to $server_host:$server_port...\n";
@@ -23,25 +28,33 @@ while (1) {
     );
 
     if (!$socket) {
+        my $err_msg;
         if ($! =~ /timed out/i) {
-            print "Connection attempt timed out. Retrying in $retry_delay seconds...\n";
+            $err_msg = "Connection attempt timed out.";
         } elsif ($! =~ /refused/i) {
-            print "Connection refused by server. Retrying in $retry_delay seconds...\n";
+            $err_msg = "Connection refused by server.";
         } else {
-            print "Connection failed: $!. Retrying in $retry_delay seconds...\n";
+            $err_msg = "Connection failed: $!";
         }
+        print "$err_msg Retrying in $retry_delay seconds...\n";
+        print $logfh "$err_msg\n";
         sleep($retry_delay);
         next;
     }
 
     print "Connected to server.\n";
+    print $logfh "Connected to $server_host:$server_port\n";
 
     while (my $line = <$socket>) {
         chomp $line;
         print "Received: $line\n";
+        print $logfh "$line\n";
     }
 
     print "Disconnected from server. Reconnecting in $retry_delay seconds...\n";
+    print $logfh "Disconnected from server.\n";
     close $socket;
     sleep($retry_delay);
 }
+
+close $logfh;
