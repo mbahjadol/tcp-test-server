@@ -5,12 +5,16 @@ use IO::Socket::INET;
 use POSIX qw(strftime);
 use Time::HiRes qw(sleep);
 
-# Server configuration
-my $server_host = 'container-a';  # Change to server IP if needed
-my $server_port = 5000;
-my $retry_delay = 3;            # Seconds between retries
+# Read host and port from command-line
+my ($server_host, $server_port) = @ARGV;
 
-# Loop to keep retrying connection
+# Validate input
+unless ($server_host && $server_port =~ /^\d+$/) {
+    die "Usage: $0 <host> <port>\nExample: $0 127.0.0.1 5000\n";
+}
+
+my $retry_delay = 3;  # Seconds between retries
+
 while (1) {
     print "Attempting to connect to $server_host:$server_port...\n";
 
@@ -35,7 +39,6 @@ while (1) {
 
     print "Connected to server.\n";
 
-    # Read data from server
     while (my $line = <$socket>) {
         chomp $line;
         print "Received: $line\n";
